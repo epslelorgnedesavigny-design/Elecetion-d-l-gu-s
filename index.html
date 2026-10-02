@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Élection des Délégués de Classe</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f5ff',
+                            100: '#e0ebff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-pv, #printable-pv * {
+                visibility: visible;
+            }
+            #printable-pv {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 20px;
+                background: white;
+                color: black;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        .animate-pop {
+            animation: pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes pop {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <div id="app" class="min-h-screen flex flex-col justify-between">
+        <!-- Top Navigation / Header -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+                        <i class="fa-solid font-bold fa-check-to-slot text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-lg sm:text-xl text-slate-900 leading-tight">VoteDélégué</h1>
+                        <p class="text-xs text-slate-500 font-medium" id="header-class-name">Élection des Délégués</p>
+                    </div>
+                </div>
+
+                <!-- Phase Indicators & Action -->
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <span id="current-phase-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                        <span id="phase-badge-text">Configuration</span>
+                    </span>
+
+                    <button onclick="app.toggleAdminModal()" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-user-gear"></i>
+                        <span class="hidden sm:inline">Espace Enseignant</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            
+            <!-- Toast Notification Container -->
+            <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+            <!-- VIEW 1: CONFIGURATION (ADMIN) -->
+            <section id="view-config" class="view-section space-y-6">
+                <div class="bg-gradient-to-r from-indigo-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+                        <i class="fa-solid fa-box-archive text-9xl"></i>
+                    </div>
+                    <div class="max-w-2xl relative z-10">
+                        <span class="px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">Étape 1 sur 3</span>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold mt-3 mb-2">Configuration du Scrutin</h2>
+                        <p class="text-indigo-200 text-sm sm:text-base">Préparez la liste des candidat(e)s et les paramètres de la classe avant de lancer l'isoloir anonyme.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Class Parameters Card -->
+                    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+                        <h3 class="font-bold text-slate-900 text-lg flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-indigo-600"></i> Paramètres Généraux
+                        </h3>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nom de la Classe</label>
+                                <input type="text" id="cfg-class-name" placeholder="ex: 4ème B" value="4ème B" 
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-800 text-sm">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nombre d'Élèves Inscrits</label>
+                                <input type="number" id="cfg-total-voters" min="2" max="50" value="28" 
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-800 text-sm">
+                                <p class="text-xs text-slate-500 mt-1">Sert au calcul automatique du taux de participation.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Code PIN Enseignant</label>
+                                <div class="relative">
+                                    <input type="password" id="cfg-admin-pin" value="1234" maxlength="6" 
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-800 text-sm tracking-widest">
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">Code requis pour voir les résultats et changer de tour (Par défaut: 1234).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Candidates List Management -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-slate-900 text-lg flex items-center gap-2">
+                                    <i class="fa-solid fa-users-viewfinder text-indigo-600"></i> Liste des Candidat(e)s
+                                </h3>
+                                <span id="candidate-count-tag" class="px-2.5 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600">0 candidat(e)s</span>
+                            </div>
+
+                            <!-- Add Candidate Input Form -->
+                            <form id="add-candidate-form" onsubmit="app.addCandidate(event)" class="flex gap-2 mb-4">
+                                <input type="text" id="new-candidate-name" placeholder="Prénom et Nom du candidat" required
+                                    class="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-800 text-sm">
+                                <button type="submit" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-plus"></i> Ajouter
+                                </button>
+                            </form>
+
+                            <!-- Dynamic Candidates Container -->
+                            <div id="candidates-list-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                                <!-- Dynamic items rendered via JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Action Bar to start voting -->
+                        <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <button onclick="app.loadDemoCandidates()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold underline">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Charger un exemple de classe
+                            </button>
+                            
+                            <button onclick="app.startRound1()" class="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-play"></i> Lancer le 1er Tour de Scrutin
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 2: ISOLOIR (VOTING BOOTH FOR STUDENTS) -->
+            <section id="view-isoloir" class="view-section hidden space-y-6">
+                <!-- Welcome Banner / Status -->
+                <div class="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xl">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Isoloir Virtuel Sécurisé</span>
+                            <h2 class="text-xl font-extrabold text-slate-900" id="isoloir-voter-title">Votant n°1 sur 28</h2>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+                        <i class="fa-solid fa-check-double text-indigo-600 text-lg"></i>
+                        <div>
+                            <div class="text-xs font-semibold text-slate-500">Sélection en cours</div>
+                            <div class="text-sm font-extrabold text-slate-800" id="selection-counter-badge">0 / 2 candidat(e)s</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rules Banner -->
+                <div id="voting-instructions-banner" class="bg-indigo-50/80 border border-indigo-100 rounded-xl p-4 text-xs sm:text-sm text-indigo-900 flex items-start gap-3">
+                    <i class="fa-solid fa-circle-info text-indigo-600 text-lg mt-0.5"></i>
+                    <div>
+                        <span class="font-bold block text-indigo-950 mb-0.5">Règle du scrutin :</span>
+                        <span id="voting-instructions-text">Vous pouvez sélectionner **jusqu'à 2 candidat(e)s** différents. Vous pouvez également choisir 1 seul candidat ou voter blanc. Votre choix est 100% anonyme.</span>
+                    </div>
+                </div>
+
+                <!-- Candidate Selection Grid -->
+                <div id="isoloir-candidates-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic rendering of clickable cards -->
+                </div>
+
+                <!-- Special Action Cards (White vote & Reset selection) -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <button onclick="app.toggleWhiteVote()" id="btn-white-vote" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 text-sm transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-square-minus text-slate-400"></i> Voter Blanc (Aucun candidat)
+                    </button>
+
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="app.clearSelection()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-medium text-sm transition-all">
+                            Réinitialiser
+                        </button>
+                        <button onclick="app.reviewAndSubmitVote()" id="btn-submit-vote" disabled class="flex-1 sm:flex-none px-6 py-2.5 bg-slate-300 text-slate-500 font-bold text-sm rounded-xl transition-all cursor-not-allowed flex items-center justify-center gap-2 shadow-sm">
+                            <i class="fa-solid fa-paper-plane"></i> Valider mon vote
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 3: VOTE TRANSITION / SUCCESS BOOTH SCREEN -->
+            <section id="view-vote-success" class="view-section hidden max-w-xl mx-auto text-center py-12 space-y-6">
+                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl space-y-6 animate-pop">
+                    <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl shadow-lg shadow-emerald-100">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h2 class="text-2xl font-extrabold text-slate-900">Vote Enregistré avec Succès !</h2>
+                        <p class="text-slate-600 text-sm">Votre bulletin est anonymement déposé dans l'urne électronique. Merci pour votre participation !</p>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Réinitialisation automatique dans</div>
+                        <div class="text-3xl font-black text-indigo-600" id="countdown-timer">3s</div>
+                    </div>
+
+                    <button onclick="app.nextVoterNow()" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-indigo-200 flex items-center justify-center gap-2">
+                        Élève suivant <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- VIEW 4: ADMIN LIVE DASHBOARD & RESULTS DEPOUILLEMENT -->
+            <section id="view-results" class="view-section hidden space-y-6">
+                <!-- Top Summary Cards -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inscrits</span>
+                        <div class="text-2xl sm:text-3xl font-extrabold text-slate-900" id="res-total-inscrits">28</div>
+                        <span class="text-xs text-slate-500">Élèves enregistrés</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Votants</span>
+                        <div class="text-2xl sm:text-3xl font-extrabold text-indigo-600" id="res-total-votants">0</div>
+                        <span class="text-xs text-indigo-500 font-semibold" id="res-participation-rate">0% de participation</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Exprimés</span>
+                        <div class="text-2xl sm:text-3xl font-extrabold text-emerald-600" id="res-total-expressed">0</div>
+                        <span class="text-xs text-slate-500">Bulletins valides</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Seuil Majorité Absolue</span>
+                        <div class="text-2xl sm:text-3xl font-extrabold text-amber-600" id="res-majority-threshold">0</div>
+                        <span class="text-xs text-slate-500">&gt; 50% des votants</span>
+                    </div>
+                </div>
+
+                <!-- Lock Screen Overlay if PIN required -->
+                <div id="results-locked-banner" class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center space-y-4">
+                    <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <div class="max-w-md mx-auto space-y-1">
+                        <h3 class="font-extrabold text-amber-950 text-lg">Dépouillement Masqué</h3>
+                        <p class="text-xs text-amber-800">Saisissez le code PIN Enseignant pour afficher le décompte des voix et proclamer le résultat.</p>
+                    </div>
+                    <button onclick="app.unlockResultsWithPin()" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm rounded-xl shadow-md transition-all">
+                        Déverrouiller les Résultats
+                    </button>
+                </div>
+
+                <!-- Unlocked Results Section -->
+                <div id="results-content-unlocked" class="hidden space-y-6">
+                    
+                    <!-- Proclamation Status Alert Box -->
+                    <div id="electoral-status-box" class="p-6 rounded-2xl border shadow-sm space-y-3">
+                        <!-- Dynamic analysis message injected by JavaScript -->
+                    </div>
+
+                    <!-- Vote Breakdown Chart & List -->
+                    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                                <i class="fa-solid fa-chart-bar text-indigo-600"></i> Détail du Décompte des Voix
+                            </h3>
+                            <span class="text-xs text-slate-500 font-medium" id="round-title-label">1er Tour</span>
+                        </div>
+
+                        <div id="results-candidates-list" class="space-y-3">
+                            <!-- Dynamic Candidate Progress Bars -->
+                        </div>
+                    </div>
+
+                    <!-- Action Toolbar -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                        <button onclick="app.goBackToIsoloir()" id="btn-return-isoloir" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition-all">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> Continuer le Vote (Isoloir)
+                        </button>
+
+                        <div class="flex flex-wrap gap-2" id="results-action-buttons">
+                            <!-- Dynamic buttons depending on electoral state -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 5: SECOND ROUND SETUP (IF NEEDED) -->
+            <section id="view-round2-setup" class="view-section hidden space-y-6">
+                <div class="bg-gradient-to-r from-amber-600 to-indigo-800 rounded-2xl p-6 sm:p-8 text-white shadow-xl">
+                    <span class="px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider bg-white/20 text-white">Étape 2 - Deuxième Tour</span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold mt-2 mb-1">Préparation du 2nd Tour</h2>
+                    <p class="text-amber-100 text-sm" id="round2-setup-subtitle">Sélectionnez les candidat(e)s maintenu(e)s pour attribuer le ou les sièges restants à la majorité relative.</p>
+                </div>
+
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+                    <h3 class="font-bold text-slate-900 text-lg">Candidats maintenus pour le 2nd Tour</h3>
+                    <p class="text-xs text-slate-500">Par défaut, tous les candidats non élus sont cochés. Décochez ceux qui se retirent du scrutin.</p>
+
+                    <div id="round2-candidates-selector" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Dynamic checkboxes for 2nd round candidates -->
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-end">
+                        <button onclick="app.confirmAndStartRound2()" class="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm rounded-xl shadow-lg transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-play"></i> Lancer le 2nd Tour de Scrutin
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 6: OFFICIAL MINUTES / PROCES-VERBAL (PRINTABLE) -->
+            <section id="view-pv" class="view-section hidden space-y-6">
+                <div class="no-print flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <div>
+                        <h2 class="font-extrabold text-slate-900 text-lg">Procès-Verbal Officiel d'Élection</h2>
+                        <p class="text-xs text-slate-500">Document de synthèse prêt pour l'archivage ou la signature de la classe.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="window.print()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-print"></i> Imprimer / Imprimer en PDF
+                        </button>
+                        <button onclick="app.resetWholeElection()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-sm rounded-xl border border-rose-200 transition-all">
+                            <i class="fa-solid fa-rotate-right"></i> Nouvelle Élection
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Printable Document Box -->
+                <div id="printable-pv" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm space-y-6 text-slate-900">
+                    <!-- Header PV -->
+                    <div class="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
+                        <div>
+                            <h2 class="text-2xl font-black uppercase tracking-tight">Procès-Verbal d'Élection</h2>
+                            <p class="text-sm font-bold text-slate-600">Délégués de Classe et Suppléants</p>
+                        </div>
+                        <div class="text-right text-xs text-slate-600 font-medium">
+                            <p>Établissement Scolaire</p>
+                            <p id="pv-date-display">Date: --/--/----</p>
+                        </div>
+                    </div>
+
+                    <!-- Details Class -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+                        <div>
+                            <span class="text-slate-500 block font-medium">Classe :</span>
+                            <span class="font-extrabold text-slate-900 text-sm" id="pv-class-name">--</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block font-medium">Nombre d'Inscrits :</span>
+                            <span class="font-extrabold text-slate-900 text-sm" id="pv-total-inscrits">--</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block font-medium">Votants (1er Tour) :</span>
+                            <span class="font-extrabold text-slate-900 text-sm" id="pv-votants-r1">--</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block font-medium">Votants (2nd Tour) :</span>
+                            <span class="font-extrabold text-slate-900 text-sm" id="pv-votants-r2">N/A</span>
+                        </div>
+                    </div>
+
+                    <!-- Winners Proclamation Box -->
+                    <div class="border-2 border-indigo-600 rounded-xl p-5 bg-indigo-50/50 space-y-4">
+                        <h3 class="font-black text-indigo-950 uppercase text-xs tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-trophy text-amber-500 text-sm"></i> Élus au Poste de Délégués Titulaires
+                        </h3>
+                        <div id="pv-elected-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Injected by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Substitutes (Suppléants) Box -->
+                    <div class="border border-slate-200 rounded-xl p-4 space-y-2 bg-slate-50">
+                        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-600">Suppléants Proposés (Suivants au classement)</h4>
+                        <div id="pv-substitutes-list" class="text-sm font-semibold text-slate-800">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Full Results Table -->
+                    <div class="space-y-2">
+                        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-600">Tableau Récapitulatif des Votes</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 border-b border-slate-200">
+                                        <th class="p-2.5 font-bold text-slate-700">Candidat(e)</th>
+                                        <th class="p-2.5 font-bold text-slate-700 text-center">1er Tour (Voix)</th>
+                                        <th class="p-2.5 font-bold text-slate-700 text-center">1er Tour (%)</th>
+                                        <th class="p-2.5 font-bold text-slate-700 text-center">2nd Tour (Voix)</th>
+                                        <th class="p-2.5 font-bold text-slate-700 text-center">Statut Final</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pv-table-body" class="divide-y divide-slate-200">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Signatures Box -->
+                    <div class="pt-8 border-t border-slate-200 grid grid-cols-2 gap-8 text-xs">
+                        <div class="space-y-8">
+                            <p class="font-bold text-slate-700">Signature du Professeur Principal / Enseignant :</p>
+                            <div class="h-12 border-b border-dashed border-slate-400"></div>
+                        </div>
+                        <div class="space-y-8">
+                            <p class="font-bold text-slate-700">Signature de 2 Électeurs / Assesseurs :</p>
+                            <div class="h-12 border-b border-dashed border-slate-400"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print">
+            <p>Application de Scrutin Anonyme &bull; Élection des Délégués de Classe &bull; Exécution Locale Sécurisée</p>
+        </footer>
+    </div>
+
+    <!-- MODAL 1: ADMIN PIN ACCESS MODAL -->
+    <div id="modal-admin-pin" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-pop">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-indigo-600 font-extrabold text-lg">
+                    <i class="fa-solid fa-user-lock"></i> Espace Enseignant
+                </div>
+                <button onclick="app.closeAdminModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-600">Saisissez le code PIN enseignant pour accéder aux réglages et aux résultats.</p>
+
+            <div>
+                <input type="password" id="input-modal-pin" placeholder="Code PIN (ex: 1234)" maxlength="6"
+                    class="w-full text-center text-2xl tracking-widest font-bold px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="app.closeAdminModal()" class="flex-1 py-2.5 border border-slate-200 font-semibold text-slate-600 rounded-xl text-sm hover:bg-slate-50">
+                    Annuler
+                </button>
+                <button onclick="app.submitAdminPin()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md">
+                    Valider
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: VOTE CONFIRMATION MODAL -->
+    <div id="modal-confirm-vote" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-pop">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-check-to-slot"></i>
+                </div>
+                <h3 class="text-xl font-extrabold text-slate-900">Confirmer votre vote ?</h3>
+                <p class="text-xs text-slate-500">Vérifiez attentivement vos choix avant le dépôt définitif dans l'urne anonyme.</p>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Candidat(e)s choisi(e)s :</div>
+                <div id="confirm-selected-list" class="space-y-1">
+                    <!-- Dynamic List -->
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="app.closeConfirmModal()" class="flex-1 py-3 border border-slate-300 font-semibold text-slate-700 rounded-xl text-sm hover:bg-slate-50">
+                    Modifier mes choix
+                </button>
+                <button onclick="app.commitFinalVote()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-lg shadow-emerald-600/20">
+                    Oui, voter maintenant
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * MAIN APPLICATION CONTROLLER
+         * Handlers for state management, voting logic, election calculations & rendering
+         */
+        const STORAGE_KEY = 'votedelegue_app_state_v1';
+
+        // Initial default state
+        const defaultState = {
+            className: '4ème B',
+            totalVoters: 28,
+            adminPin: '1234',
+            currentPhase: 'CONFIG', // 'CONFIG' | 'ROUND1_VOTE' | 'ROUND1_RESULTS' | 'ROUND2_SETUP' | 'ROUND2_VOTE' | 'ROUND2_RESULTS' | 'FINAL_PV'
+            candidates: [
+                { id: '1', name: 'Lucas Bernard', color: 'bg-blue-500' },
+                { id: '2', name: 'Emma Petit', color: 'bg-emerald-500' },
+                { id: '3', name: 'Hugo Moreau', color: 'bg-amber-500' },
+                { id: '4', name: 'Chloé Dubois', color: 'bg-rose-500' }
+            ],
+            // Votes for Round 1
+            round1: {
+                votersCount: 0,
+                votes: [], // Array of candidate IDs or 'WHITE'
+                isLocked: true
+            },
+            // Votes for Round 2
+            round2: {
+                activeCandidates: [], // Candidate IDs participating in round 2
+                votersCount: 0,
+                votes: [],
+                isLocked: true,
+                seatsToFill: 2
+            },
+            elected: [], // Final elected candidate IDs
+            substitutes: [], // Alternates/Suppléants
+            tempSelection: [], // Selection in isoloir
+            isWhiteVote: false,
+            countdownInterval: null
+        };
+
+        class VoteApp {
+            constructor() {
+                this.state = this.loadState();
+                this.initUI();
+            }
+
+            // Load state from localStorage or default
+            loadState() {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        return JSON.parse(saved);
+                    }
+                } catch (e) {
+                    console.error("Erreur chargement localStorage", e);
+                }
+                return { ...defaultState };
+            }
+
+            // Save state to localStorage
+            saveState() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+                } catch (e) {
+                    console.error("Erreur sauvegarde localStorage", e);
+                }
+            }
+
+            // Router to switch active views
+            showView(viewId) {
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+                const target = document.getElementById(viewId);
+                if (target) {
+                    target.classList.remove('hidden');
+                }
+                this.updatePhaseBadge();
+            }
+
+            // Update top header phase indicator
+            updatePhaseBadge() {
+                const textEl = document.getElementById('phase-badge-text');
+                const headerClassEl = document.getElementById('header-class-name');
+                
+                if (headerClassEl) headerClassEl.textContent = `Classe : ${this.state.className}`;
+
+                const phaseNames = {
+                    'CONFIG': 'Configuration',
+                    'ROUND1_VOTE': '1er Tour - Isoloir',
+                    'ROUND1_RESULTS': '1er Tour - Dépouillement',
+                    'ROUND2_SETUP': 'Préparation 2nd Tour',
+                    'ROUND2_VOTE': '2nd Tour - Isoloir',
+                    'ROUND2_RESULTS': '2nd Tour - Dépouillement',
+                    'FINAL_PV': 'Procès-Verbal Officiel'
+                };
+
+                if (textEl) textEl.textContent = phaseNames[this.state.currentPhase] || 'Scrutin';
+            }
+
+            initUI() {
+                // Populate Config fields
+                document.getElementById('cfg-class-name').value = this.state.className;
+                document.getElementById('cfg-total-voters').value = this.state.totalVoters;
+                document.getElementById('cfg-admin-pin').value = this.state.adminPin;
+
+                // Sync config input changes
+                document.getElementById('cfg-class-name').addEventListener('input', (e) => {
+                    this.state.className = e.target.value || 'Classe';
+                    this.saveState();
+                    this.updatePhaseBadge();
+                });
+
+                document.getElementById('cfg-total-voters').addEventListener('change', (e) => {
+                    this.state.totalVoters = parseInt(e.target.value) || 20;
+                    this.saveState();
+                });
+
+                document.getElementById('cfg-admin-pin').addEventListener('input', (e) => {
+                    this.state.adminPin = e.target.value || '1234';
+                    this.saveState();
+                });
+
+                // Render current view according to phase state
+                this.renderCurrentPhaseView();
+            }
+
+            renderCurrentPhaseView() {
+                switch (this.state.currentPhase) {
+                    case 'CONFIG':
+                        this.renderConfigView();
+                        this.showView('view-config');
+                        break;
+                    case 'ROUND1_VOTE':
+                    case 'ROUND2_VOTE':
+                        this.renderIsoloirView();
+                        this.showView('view-isoloir');
+                        break;
+                    case 'ROUND1_RESULTS':
+                    case 'ROUND2_RESULTS':
+                        this.renderResultsView();
+                        this.showView('view-results');
+                        break;
+                    case 'ROUND2_SETUP':
+                        this.renderRound2SetupView();
+                        this.showView('view-round2-setup');
+                        break;
+                    case 'FINAL_PV':
+                        this.renderPVView();
+                        this.showView('view-pv');
+                        break;
+                }
+            }
+
+            renderConfigView() {
+                const container = document.getElementById('candidates-list-container');
+                const tag = document.getElementById('candidate-count-tag');
+                container.innerHTML = '';
+
+                tag.textContent = `${this.state.candidates.length} candidat(e)s`;
+
+                if (this.state.candidates.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-span-2 py-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+                            Aucun candidat ajouté pour le moment.
+                        </div>`;
+                    return;
+                }
+
+                this.state.candidates.forEach((c) => {
+                    const card = document.createElement('div');
+                    card.className = 'flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl';
+                    card.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg ${c.color || 'bg-indigo-500'} text-white font-bold text-xs flex items-center justify-center">
+                                ${c.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span class="font-bold text-sm text-slate-800">${this.escapeHtml(c.name)}</span>
+                        </div>
+                        <button onclick="app.removeCandidate('${c.id}')" class="text-slate-400 hover:text-rose-600 transition-colors p-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            addCandidate(e) {
+                e.preventDefault();
+                const input = document.getElementById('new-candidate-name');
+                const name = input.value.trim();
+                if (!name) return;
+
+                const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500', 'bg-purple-500', 'bg-teal-500'];
+                const randomColor = colors[this.state.candidates.length % colors.length];
+
+                this.state.candidates.push({
+                    id: Date.now().toString(),
+                    name: name,
+                    color: randomColor
+                });
+
+                input.value = '';
+                this.saveState();
+                this.renderConfigView();
+                this.showToast("Candidat ajouté avec succès !");
+            }
+
+            removeCandidate(id) {
+                this.state.candidates = this.state.candidates.filter(c => c.id !== id);
+                this.saveState();
+                this.renderConfigView();
+            }
+
+            loadDemoCandidates() {
+                this.state.candidates = [
+                    { id: '1', name: 'Alexandre Dupont', color: 'bg-indigo-500' },
+                    { id: '2', name: 'Sofia Benali', color: 'bg-emerald-500' },
+                    { id: '3', name: 'Léo Martin', color: 'bg-amber-500' },
+                    { id: '4', name: 'Manon Bernard', color: 'bg-rose-500' }
+                ];
+                this.saveState();
+                this.renderConfigView();
+                this.showToast("Exemple de classe chargé !");
+            }
+
+            startRound1() {
+                if (this.state.candidates.length < 2) {
+                    this.showToast("Il faut au moins 2 candidat(e)s pour lancer l'élection.", 'error');
+                    return;
+                }
+
+                this.state.currentPhase = 'ROUND1_VOTE';
+                this.state.round1.votersCount = 0;
+                this.state.round1.votes = [];
+                this.state.round1.isLocked = true;
+                this.state.tempSelection = [];
+                this.state.isWhiteVote = false;
+
+                this.saveState();
+                this.renderCurrentPhaseView();
+                this.showToast("Le 1er tour est désormais ouvert !");
+            }
+
+            renderIsoloirView() {
+                const isRound2 = this.state.currentPhase === 'ROUND2_VOTE';
+                const currentRoundObj = isRound2 ? this.state.round2 : this.state.round1;
+                const voterNum = currentRoundObj.votersCount + 1;
+
+                document.getElementById('isoloir-voter-title').textContent = `Votant n°${voterNum} sur ${this.state.totalVoters}`;
+                
+                // Max votes allowed in this round
+                const maxAllowed = (isRound2 && this.state.round2.seatsToFill === 1) ? 1 : 2;
+
+                const instructionsText = document.getElementById('voting-instructions-text');
+                if (maxAllowed === 1) {
+                    instructionsText.innerHTML = `Vous pouvez sélectionner <strong>1 seul candidat(e)</strong> pour ce second tour. Vote confidentiel et anonyme.`;
+                } else {
+                    instructionsText.innerHTML = `Vous pouvez sélectionner <strong>jusqu'à 2 candidat(e)s</strong>. Vous pouvez aussi voter pour 1 seul candidat ou voter blanc. Vote anonyme.`;
+                }
+
+                // Render Candidate Selection Cards
+                const grid = document.getElementById('isoloir-candidates-grid');
+                grid.innerHTML = '';
+
+                // Filter candidates list if round 2
+                let candidatesToDisplay = this.state.candidates;
+                if (isRound2 && this.state.round2.activeCandidates.length > 0) {
+                    candidatesToDisplay = this.state.candidates.filter(c => this.state.round2.activeCandidates.includes(c.id));
+                }
+
+                candidatesToDisplay.forEach(c => {
+                    const isSelected = this.state.tempSelection.includes(c.id);
+                    const card = document.createElement('div');
+                    
+                    card.onclick = () => this.toggleCandidateSelection(c.id, maxAllowed);
+                    card.className = `cursor-pointer p-5 rounded-2xl border-2 transition-all flex items-center justify-between shadow-sm hover:shadow-md ${
+                        isSelected 
+                            ? 'border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/20' 
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`;
+
+                    card.innerHTML = `
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-2xl ${c.color || 'bg-indigo-500'} text-white font-black text-lg flex items-center justify-center shadow-md">
+                                ${c.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <h4 class="font-extrabold text-slate-900 text-base">${this.escapeHtml(c.name)}</h4>
+                                <span class="text-xs font-medium text-slate-400">Candidat(e) Délégué(e)</span>
+                            </div>
+                        </div>
+
+                        <div class="w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+                        }">
+                            <i class="fa-solid fa-check text-xs ${isSelected ? 'opacity-100' : 'opacity-0'}"></i>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                this.updateSelectionUI(maxAllowed);
+            }
+
+            toggleCandidateSelection(id, maxAllowed) {
+                this.state.isWhiteVote = false;
+                
+                const idx = this.state.tempSelection.indexOf(id);
+                if (idx > -1) {
+                    // Deselect
+                    this.state.tempSelection.splice(idx, 1);
+                } else {
+                    // Select
+                    if (this.state.tempSelection.length >= maxAllowed) {
+                        if (maxAllowed === 1) {
+                            this.state.tempSelection = [id]; // Replace if max 1
+                        } else {
+                            this.showToast(`Vous ne pouvez pas choisir plus de ${maxAllowed} candidat(e)s.`, 'warning');
+                            return;
+                        }
+                    } else {
+                        this.state.tempSelection.push(id);
+                    }
+                }
+
+                this.renderIsoloirView();
+            }
+
+            toggleWhiteVote() {
+                this.state.isWhiteVote = true;
+                this.state.tempSelection = [];
+                this.renderIsoloirView();
+            }
+
+            clearSelection() {
+                this.state.tempSelection = [];
+                this.state.isWhiteVote = false;
+                this.renderIsoloirView();
+            }
+
+            updateSelectionUI(maxAllowed) {
+                const badge = document.getElementById('selection-counter-badge');
+                const btnSubmit = document.getElementById('btn-submit-vote');
+                const btnWhite = document.getElementById('btn-white-vote');
+
+                if (this.state.isWhiteVote) {
+                    badge.textContent = "Vote Blanc";
+                    btnWhite.className = "w-full sm:w-auto px-4 py-2.5 rounded-xl border-2 border-slate-700 bg-slate-800 text-white font-bold text-sm transition-all flex items-center justify-center gap-2";
+                } else {
+                    badge.textContent = `${this.state.tempSelection.length} / ${maxAllowed} candidat(e)s`;
+                    btnWhite.className = "w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 text-sm transition-all flex items-center justify-center gap-2";
+                }
+
+                const canSubmit = this.state.isWhiteVote || this.state.tempSelection.length > 0;
+                btnSubmit.disabled = !canSubmit;
+
+                if (canSubmit) {
+                    btnSubmit.className = "flex-1 sm:flex-none px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-indigo-200 cursor-pointer flex items-center justify-center gap-2";
+                } else {
+                    btnSubmit.className = "flex-1 sm:flex-none px-6 py-2.5 bg-slate-300 text-slate-500 font-bold text-sm rounded-xl transition-all cursor-not-allowed flex items-center justify-center gap-2 shadow-sm";
+                }
+            }
+
+            reviewAndSubmitVote() {
+                const modal = document.getElementById('modal-confirm-vote');
+                const list = document.getElementById('confirm-selected-list');
+                list.innerHTML = '';
+
+                if (this.state.isWhiteVote || this.state.tempSelection.length === 0) {
+                    list.innerHTML = `<div class="p-2.5 bg-slate-200 text-slate-800 rounded-lg font-bold text-center text-sm">Vote Blanc</div>`;
+                } else {
+                    this.state.tempSelection.forEach(id => {
+                        const cand = this.state.candidates.find(c => c.id === id);
+                        if (cand) {
+                            list.innerHTML += `
+                                <div class="p-2.5 bg-indigo-100 text-indigo-900 rounded-lg font-bold text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-user-check text-indigo-600"></i> ${this.escapeHtml(cand.name)}
+                                </div>`;
+                        }
+                    });
+                }
+
+                modal.classList.remove('hidden');
+            }
+
+            closeConfirmModal() {
+                document.getElementById('modal-confirm-vote').classList.add('hidden');
+            }
+
+            commitFinalVote() {
+                this.closeConfirmModal();
+
+                const isRound2 = this.state.currentPhase === 'ROUND2_VOTE';
+                const roundObj = isRound2 ? this.state.round2 : this.state.round1;
+
+                roundObj.votersCount += 1;
+
+                if (this.state.isWhiteVote || this.state.tempSelection.length === 0) {
+                    roundObj.votes.push(['WHITE']);
+                } else {
+                    roundObj.votes.push([...this.state.tempSelection]);
+                }
+
+                // Reset temporary vote selection
+                this.state.tempSelection = [];
+                this.state.isWhiteVote = false;
+                this.saveState();
+
+                // Show transition success screen
+                this.showView('view-vote-success');
+                this.startCountdown();
+            }
+
+            startCountdown() {
+                let seconds = 3;
+                const timerEl = document.getElementById('countdown-timer');
+                timerEl.textContent = `${seconds}s`;
+
+                if (this.state.countdownInterval) clearInterval(this.state.countdownInterval);
+
+                this.state.countdownInterval = setInterval(() => {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(this.state.countdownInterval);
+                        this.nextVoterNow();
+                    } else {
+                        timerEl.textContent = `${seconds}s`;
+                    }
+                }, 1000);
+            }
+
+            nextVoterNow() {
+                if (this.state.countdownInterval) clearInterval(this.state.countdownInterval);
+
+                const isRound2 = this.state.currentPhase === 'ROUND2_VOTE';
+                const roundObj = isRound2 ? this.state.round2 : this.state.round1;
+
+                // Check if all voters have voted
+                if (roundObj.votersCount >= this.state.totalVoters) {
+                    this.showToast("Tous les élèves inscrits ont fini de voter !");
+                    this.state.currentPhase = isRound2 ? 'ROUND2_RESULTS' : 'ROUND1_RESULTS';
+                    this.saveState();
+                    this.renderCurrentPhaseView();
+                } else {
+                    this.renderIsoloirView();
+                    this.showView('view-isoloir');
+                }
+            }
+
+            renderResultsView() {
+                const isRound2 = this.state.currentPhase === 'ROUND2_RESULTS';
+                const roundObj = isRound2 ? this.state.round2 : this.state.round1;
+
+                document.getElementById('res-total-inscrits').textContent = this.state.totalVoters;
+                document.getElementById('res-total-votants').textContent = roundObj.votersCount;
+                
+                const partRate = Math.round((roundObj.votersCount / this.state.totalVoters) * 100) || 0;
+                document.getElementById('res-participation-rate').textContent = `${partRate}% de participation`;
+
+                const roundTitle = document.getElementById('round-title-label');
+                if (roundTitle) roundTitle.textContent = isRound2 ? 'Résultats du 2nd Tour' : 'Résultats du 1er Tour';
+
+                const lockedBanner = document.getElementById('results-locked-banner');
+                const contentUnlocked = document.getElementById('results-content-unlocked');
+
+                if (roundObj.isLocked) {
+                    lockedBanner.classList.remove('hidden');
+                    contentUnlocked.classList.add('hidden');
+                } else {
+                    lockedBanner.classList.add('hidden');
+                    contentUnlocked.classList.remove('hidden');
+                    this.computeAndDisplayElectoralResults(isRound2);
+                }
+            }
+
+            unlockResultsWithPin() {
+                this.openAdminPinModal((success) => {
+                    if (success) {
+                        const isRound2 = this.state.currentPhase === 'ROUND2_RESULTS';
+                        if (isRound2) this.state.round2.isLocked = false;
+                        else this.state.round1.isLocked = false;
+
+                        this.saveState();
+                        this.renderResultsView();
+                        this.showToast("Résultats déverrouillés !");
+                    }
+                });
+            }
+
+            goBackToIsoloir() {
+                const isRound2 = this.state.currentPhase === 'ROUND2_RESULTS';
+                this.state.currentPhase = isRound2 ? 'ROUND2_VOTE' : 'ROUND1_VOTE';
+                this.saveState();
+                this.renderCurrentPhaseView();
+            }
+
+            computeAndDisplayElectoralResults(isRound2) {
+                const roundObj = isRound2 ? this.state.round2 : this.state.round1;
+                
+                // 1. Calculate vote tallies per candidate
+                const tallies = {};
+                this.state.candidates.forEach(c => tallies[c.id] = 0);
+                let expressedBallotsCount = 0;
+                let whiteBallotsCount = 0;
+
+                roundObj.votes.forEach(ballot => {
+                    if (ballot.includes('WHITE') || ballot.length === 0) {
+                        whiteBallotsCount++;
+                    } else {
+                        expressedBallotsCount++;
+                        ballot.forEach(candId => {
+                            if (tallies[candId] !== undefined) {
+                                tallies[candId]++;
+                            }
+                        });
+                    }
+                });
+
+                document.getElementById('res-total-expressed').textContent = expressedBallotsCount;
+
+                // Threshold for Absolute Majority (> 50% of voters who cast an expressed vote)
+                // Official rule: Math.floor(expressedBallotsCount / 2) + 1
+                const absoluteMajorityThreshold = expressedBallotsCount > 0 ? Math.floor(expressedBallotsCount / 2) + 1 : 1;
+                document.getElementById('res-majority-threshold').textContent = isRound2 ? 'Majorité Relative' : `${absoluteMajorityThreshold} voix`;
+
+                // Render candidate progress bars
+                const container = document.getElementById('results-candidates-list');
+                container.innerHTML = '';
+
+                // Filter active candidates for display
+                let candidateList = this.state.candidates;
+                if (isRound2 && this.state.round2.activeCandidates.length > 0) {
+                    candidateList = this.state.candidates.filter(c => this.state.round2.activeCandidates.includes(c.id));
+                }
+
+                // Sort candidates by vote count descending
+                const sortedCandidates = [...candidateList].sort((a, b) => (tallies[b.id] || 0) - (tallies[a.id] || 0));
+
+                sortedCandidates.forEach(cand => {
+                    const votes = tallies[cand.id] || 0;
+                    const pct = roundObj.votersCount > 0 ? Math.round((votes / roundObj.votersCount) * 100) : 0;
+                    const isMajority = !isRound2 && votes >= absoluteMajorityThreshold;
+
+                    const row = document.createElement('div');
+                    row.className = 'p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2';
+                    row.innerHTML = `
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-extrabold text-slate-900">${this.escapeHtml(cand.name)}</span>
+                                ${isMajority ? '<span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">Majorité Absolue</span>' : ''}
+                            </div>
+                            <div class="font-black text-slate-800">
+                                ${votes} <span class="text-xs font-normal text-slate-500">voix (${pct}%)</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                            <div class="h-2.5 rounded-full ${cand.color || 'bg-indigo-600'} transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+
+                // Render White Votes item
+                if (whiteBallotsCount > 0) {
+                    const whitePct = roundObj.votersCount > 0 ? Math.round((whiteBallotsCount / roundObj.votersCount) * 100) : 0;
+                    container.innerHTML += `
+                        <div class="p-3 bg-slate-100/70 border border-slate-200 rounded-xl flex justify-between items-center text-xs text-slate-600">
+                            <span class="font-bold">Bulletins Blancs</span>
+                            <span class="font-bold">${whiteBallotsCount} voix (${whitePct}%)</span>
+                        </div>`;
+                }
+
+                // 2. ELECTORAL RULE ANALYSIS & PROCLAMATION
+                const statusBox = document.getElementById('electoral-status-box');
+                const actionButtons = document.getElementById('results-action-buttons');
+                actionButtons.innerHTML = '';
+
+                if (!isRound2) {
+                    // 1st Round Analysis
+                    const electedRound1 = sortedCandidates.filter(c => (tallies[c.id] || 0) >= absoluteMajorityThreshold);
+
+                    if (electedRound1.length >= 2) {
+                        // BOTH SEATS ELECTED IN 1st ROUND
+                        const topTwo = electedRound1.slice(0, 2);
+                        this.state.elected = topTwo.map(c => c.id);
+                        
+                        // Substitutes are 3rd and 4th place
+                        const remaining = sortedCandidates.filter(c => !this.state.elected.includes(c.id));
+                        this.state.substitutes = remaining.slice(0, 2).map(c => c.id);
+
+                        statusBox.className = "p-6 rounded-2xl bg-emerald-50 border-2 border-emerald-500 text-emerald-950 space-y-2";
+                        statusBox.innerHTML = `
+                            <div class="flex items-center gap-2 font-black text-lg text-emerald-800">
+                                <i class="fa-solid fa-square-check"></i> Élection Terminée au 1er Tour !
+                            </div>
+                            <p class="text-sm">
+                                <strong>Deux candidats</strong> (${topTwo.map(c => c.name).join(' et ')}) ont obtenu la <strong>majorité absolue</strong> (> 50% des voix exprimées). Ils sont proclamés délégués de classe !
+                            </p>
+                        `;
+
+                        actionButtons.innerHTML = `
+                            <button onclick="app.showPV()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-md">
+                                <i class="fa-solid fa-file-contract mr-1"></i> Consulter le Procès-Verbal
+                            </button>`;
+
+                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+                    } else if (electedRound1.length === 1) {
+                        // 1 SEAT ELECTED IN 1st ROUND -> ROUND 2 NEEDED FOR 1 REMAINING SEAT
+                        const winner1 = electedRound1[0];
+                        this.state.elected = [winner1.id];
+
+                        statusBox.className = "p-6 rounded-2xl bg-amber-50 border-2 border-amber-500 text-amber-950 space-y-2";
+                        statusBox.innerHTML = `
+                            <div class="flex items-center gap-2 font-black text-lg text-amber-900">
+                                <i class="fa-solid fa-circle-exclamation"></i> 1 Délégué Élu au 1er Tour - 2nd Tour Requis
+                            </div>
+                            <p class="text-sm">
+                                <strong>${this.escapeHtml(winner1.name)}</strong> a obtenu la majorité absolue et est élu(e) 1er délégué(e) ! <br>
+                                Un <strong>2nd tour à la majorité relative</strong> doit être organisé pour attribuer le 2ème siège de délégué.
+                            </p>
+                        `;
+
+                        actionButtons.innerHTML = `
+                            <button onclick="app.prepareRound2(1)" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm rounded-xl shadow-md">
+                                Configurer le 2nd Tour (1 Siège) <i class="fa-solid fa-arrow-right ml-1"></i>
+                            </button>`;
+
+                    } else {
+                        // 0 SEATS ELECTED IN 1st ROUND -> ROUND 2 NEEDED FOR BOTH SEATS
+                        this.state.elected = [];
+
+                        statusBox.className = "p-6 rounded-2xl bg-indigo-50 border-2 border-indigo-500 text-indigo-950 space-y-2";
+                        statusBox.innerHTML = `
+                            <div class="flex items-center gap-2 font-black text-lg text-indigo-900">
+                                <i class="fa-solid fa-users-line"></i> Aucun candidat à la majorité absolue - 2nd Tour Requis
+                            </div>
+                            <p class="text-sm">
+                                Aucun candidat n'a atteint le seuil de la majorité absolue (${absoluteMajorityThreshold} voix). <br>
+                                Passage au <strong>2nd tour à la majorité relative</strong> pour attribuer les 2 sièges de délégués.
+                            </p>
+                        `;
+
+                        actionButtons.innerHTML = `
+                            <button onclick="app.prepareRound2(2)" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md">
+                                Lancer le 2nd Tour (2 Sièges) <i class="fa-solid fa-arrow-right ml-1"></i>
+                            </button>`;
+                    }
+
+                } else {
+                    // 2nd Round Relative Majority Analysis
+                    const seatsToFill = this.state.round2.seatsToFill;
+                    
+                    if (seatsToFill === 1) {
+                        // Filling 1 seat
+                        const winner2nd = sortedCandidates[0];
+                        if (winner2nd) {
+                            if (!this.state.elected.includes(winner2nd.id)) {
+                                this.state.elected.push(winner2nd.id);
+                            }
+                        }
+                    } else {
+                        // Filling 2 seats
+                        const topTwo = sortedCandidates.slice(0, 2);
+                        this.state.elected = topTwo.map(c => c.id);
+                    }
+
+                    // Define substitutes
+                    const remaining = sortedCandidates.filter(c => !this.state.elected.includes(c.id));
+                    this.state.substitutes = remaining.slice(0, 2).map(c => c.id);
+
+                    const electedObjs = this.state.candidates.filter(c => this.state.elected.includes(c.id));
+
+                    statusBox.className = "p-6 rounded-2xl bg-emerald-50 border-2 border-emerald-500 text-emerald-950 space-y-2";
+                    statusBox.innerHTML = `
+                        <div class="flex items-center gap-2 font-black text-lg text-emerald-800">
+                            <i class="fa-solid fa-trophy"></i> Proclamation Définitive des Élus !
+                        </div>
+                        <p class="text-sm">
+                            À l'issue du second tour à la majorité relative, les 2 délégués de la classe sont :<br>
+                            <strong class="text-base text-emerald-950">${electedObjs.map(c => c.name).join(' et ')}</strong>
+                        </p>
+                    `;
+
+                    actionButtons.innerHTML = `
+                        <button onclick="app.showPV()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-md">
+                            <i class="fa-solid fa-file-contract mr-1"></i> Générer le Procès-Verbal Officiel
+                        </button>`;
+
+                    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                }
+
+                this.saveState();
+            }
+
+            prepareRound2(seatsToFill) {
+                this.state.round2.seatsToFill = seatsToFill;
+                this.state.currentPhase = 'ROUND2_SETUP';
+                
+                // Exclude candidate already elected in Round 1 if any
+                const unElectedCandidates = this.state.candidates.filter(c => !this.state.elected.includes(c.id));
+                this.state.round2.activeCandidates = unElectedCandidates.map(c => c.id);
+
+                this.saveState();
+                this.renderCurrentPhaseView();
+            }
+
+            renderRound2SetupView() {
+                const container = document.getElementById('round2-candidates-selector');
+                container.innerHTML = '';
+
+                const unElectedCandidates = this.state.candidates.filter(c => !this.state.elected.includes(c.id));
+
+                unElectedCandidates.forEach(c => {
+                    const isChecked = this.state.round2.activeCandidates.includes(c.id);
+                    const label = document.createElement('label');
+                    label.className = "flex items-center space-x-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100";
+                    label.innerHTML = `
+                        <input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} 
+                            onchange="app.toggleRound2Candidate('${c.id}')"
+                            class="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                        <span class="font-bold text-slate-800 text-sm">${this.escapeHtml(c.name)}</span>
+                    `;
+                    container.appendChild(label);
+                });
+            }
+
+            toggleRound2Candidate(candId) {
+                const idx = this.state.round2.activeCandidates.indexOf(candId);
+                if (idx > -1) {
+                    this.state.round2.activeCandidates.splice(idx, 1);
+                } else {
+                    this.state.round2.activeCandidates.push(candId);
+                }
+                this.saveState();
+            }
+
+            confirmAndStartRound2() {
+                if (this.state.round2.activeCandidates.length < 1) {
+                    this.showToast("Conservez au moins 1 candidat pour le 2nd tour.", "error");
+                    return;
+                }
+
+                this.state.currentPhase = 'ROUND2_VOTE';
+                this.state.round2.votersCount = 0;
+                this.state.round2.votes = [];
+                this.state.round2.isLocked = true;
+                this.state.tempSelection = [];
+
+                this.saveState();
+                this.renderCurrentPhaseView();
+                this.showToast("Le 2nd tour est ouvert !");
+            }
+
+            showPV() {
+                this.state.currentPhase = 'FINAL_PV';
+                this.saveState();
+                this.renderCurrentPhaseView();
+            }
+
+            renderPVView() {
+                document.getElementById('pv-class-name').textContent = this.state.className;
+                document.getElementById('pv-total-inscrits').textContent = this.state.totalVoters;
+                document.getElementById('pv-votants-r1').textContent = this.state.round1.votersCount;
+                document.getElementById('pv-votants-r2').textContent = this.state.round2.votersCount > 0 ? this.state.round2.votersCount : 'N/A';
+
+                const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                document.getElementById('pv-date-display').textContent = `Date : ${dateStr}`;
+
+                // Elected List
+                const electedContainer = document.getElementById('pv-elected-list');
+                electedContainer.innerHTML = '';
+
+                const electedObjs = this.state.candidates.filter(c => this.state.elected.includes(c.id));
+                electedObjs.forEach((c, idx) => {
+                    electedContainer.innerHTML += `
+                        <div class="p-3 bg-white border border-indigo-200 rounded-lg flex items-center gap-3">
+                            <span class="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">${idx + 1}</span>
+                            <div>
+                                <div class="font-extrabold text-slate-900 text-sm">${this.escapeHtml(c.name)}</div>
+                                <div class="text-[10px] text-indigo-600 font-bold uppercase">Délégué(e) Titulaire</div>
+                            </div>
+                        </div>`;
+                });
+
+                // Substitutes
+                const subContainer = document.getElementById('pv-substitutes-list');
+                const subObjs = this.state.candidates.filter(c => this.state.substitutes.includes(c.id));
+                if (subObjs.length > 0) {
+                    subContainer.textContent = subObjs.map(c => c.name).join(' et ');
+                } else {
+                    subContainer.textContent = "Aucun désigné";
+                }
+
+                // Table Breakdown
+                const tableBody = document.getElementById('pv-table-body');
+                tableBody.innerHTML = '';
+
+                // Calculate tallies for R1 and R2
+                const talliesR1 = {};
+                this.state.round1.votes.forEach(b => b.forEach(id => talliesR1[id] = (talliesR1[id] || 0) + 1));
+
+                const talliesR2 = {};
+                this.state.round2.votes.forEach(b => b.forEach(id => talliesR2[id] = (talliesR2[id] || 0) + 1));
+
+                this.state.candidates.forEach(c => {
+                    const r1Votes = talliesR1[c.id] || 0;
+                    const r1Pct = this.state.round1.votersCount > 0 ? Math.round((r1Votes / this.state.round1.votersCount) * 100) : 0;
+                    const r2Votes = talliesR2[c.id] !== undefined ? talliesR2[c.id] : '-';
+                    
+                    let status = "Non élu(e)";
+                    if (this.state.elected.includes(c.id)) status = "🏆 ÉLU(E) DÉLÉGUÉ(E)";
+                    else if (this.state.substitutes.includes(c.id)) status = "Suppléant(e)";
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50";
+                    tr.innerHTML = `
+                        <td class="p-2.5 font-bold text-slate-900">${this.escapeHtml(c.name)}</td>
+                        <td class="p-2.5 text-center font-semibold">${r1Votes}</td>
+                        <td class="p-2.5 text-center text-slate-500">${r1Pct}%</td>
+                        <td class="p-2.5 text-center font-semibold">${r2Votes}</td>
+                        <td class="p-2.5 text-center font-bold ${this.state.elected.includes(c.id) ? 'text-emerald-600' : 'text-slate-600'}">${status}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            }
+
+            toggleAdminModal() {
+                document.getElementById('modal-admin-pin').classList.toggle('hidden');
+                document.getElementById('input-modal-pin').value = '';
+            }
+
+            closeAdminModal() {
+                document.getElementById('modal-admin-pin').classList.add('hidden');
+            }
+
+            openAdminPinModal(callback) {
+                this.pendingPinCallback = callback;
+                document.getElementById('modal-admin-pin').classList.remove('hidden');
+                document.getElementById('input-modal-pin').focus();
+            }
+
+            submitAdminPin() {
+                const pin = document.getElementById('input-modal-pin').value;
+                if (pin === this.state.adminPin) {
+                    this.closeAdminModal();
+                    if (this.pendingPinCallback) {
+                        this.pendingPinCallback(true);
+                        this.pendingPinCallback = null;
+                    } else {
+                        // Default navigate to Config or Results
+                        this.state.currentPhase = 'CONFIG';
+                        this.saveState();
+                        this.renderCurrentPhaseView();
+                    }
+                } else {
+                    this.showToast("Code PIN erroné.", "error");
+                }
+            }
+
+            resetWholeElection() {
+                if (window.confirm("Êtes-vous sûr de vouloir réinitialiser l'élection ? Toutes les voix enregistrées seront effacées.")) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    this.state = { ...defaultState, candidates: [] };
+                    this.saveState();
+                    this.initUI();
+                    this.showToast("Réinitialisation effectuée !");
+                }
+            }
+
+            showToast(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                
+                const bgClass = type === 'error' ? 'bg-rose-600' : (type === 'warning' ? 'bg-amber-600' : 'bg-slate-900');
+                
+                toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-xl text-xs sm:text-sm font-bold flex items-center gap-2 animate-pop pointer-events-auto`;
+                toast.innerHTML = `
+                    <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i>
+                    <span>${this.escapeHtml(message)}</span>
+                `;
+
+                container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            }
+
+            escapeHtml(str) {
+                return str.replace(/&/g, "&amp;")
+                          .replace(/</g, "&lt;")
+                          .replace(/>/g, "&gt;")
+                          .replace(/"/g, "&quot;")
+                          .replace(/'/g, "&#039;");
+            }
+        }
+
+        // Initialize application instance on DOM Ready
+        let app;
+        window.addEventListener('DOMContentLoaded', () => {
+            app = new VoteApp();
+        });
+    </script>
+</body>
+</html>
